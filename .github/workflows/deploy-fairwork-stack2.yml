@@ -22,7 +22,7 @@ env:
 
   API_STAGE_NAME: poc
 
-  ALLOWED_ORIGIN: https://main.d24ulcn3afdy4t.amplifyapp.com
+  ALLOWED_ORIGIN: https://main.d5mcpi3shf0a8.amplifyapp.com/
 
 
 jobs:
