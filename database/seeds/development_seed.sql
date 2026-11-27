@@ -1,13 +1,15 @@
+
 -- ============================================================================
 -- FairWork Pulse
 -- development_seed.sql
--- Development/demo data for the FairWork Pulse MySQL database.
+-- Reproducible development/demo data for MySQL.
 --
--- IMPORTANT
--- * Run migrations before this file.
--- * DEVELOPMENT / DEMONSTRATION USE ONLY.
--- * Verification codes are intentionally NOT seeded because production codes
---   should be generated securely and stored only as hashes.
+-- IMPORTANT:
+-- 1. Run database migrations before seeding.
+-- 2. DEVELOPMENT / DEMONSTRATION USE ONLY.
+-- 3. No Cognito IDs, passwords or verification codes are seeded.
+-- 4. ADMIN accounts are bootstrapped separately through Cognito.
+-- 5. EMPLOYER accounts use the application invitation workflow.
 -- ============================================================================
 
 SET NAMES utf8mb4;
@@ -16,28 +18,10 @@ SET time_zone = '+00:00';
 START TRANSACTION;
 
 -- ============================================================================
--- 1. USER PROFILES
+-- 1. DEMONSTRATION COMPANIES
 -- ============================================================================
 
-INSERT INTO user_profiles (cognito_sub, display_name, account_status)
-VALUES
-    ('dev-employee-001', 'Demo Employee One', 'ACTIVE'),
-    ('dev-employee-002', 'Demo Employee Two', 'ACTIVE'),
-
-    -- Real Cognito EMPLOYER test account
-    ('541894e8-60c1-706a-72ba-2da5a9d022bc', 'Demo Employer One', 'ACTIVE'),
-
-    ('dev-employer-002', 'Demo Employer Two', 'ACTIVE'),
-    ('dev-admin-001',    'Demo Administrator', 'ACTIVE')
-
-ON DUPLICATE KEY UPDATE
-    display_name = VALUES(display_name),
-    account_status = VALUES(account_status);
-
-
--- ============================================================================
--- 2. COMPANIES
--- ============================================================================
+-- Company 1: Northstar Retail Ltd
 
 INSERT INTO companies
     (name, industry, location, description, website, status, created_by)
@@ -48,12 +32,14 @@ SELECT
     'Synthetic retail organisation used for FairWork Pulse development.',
     NULL,
     'ACTIVE',
-    u.user_id
-FROM user_profiles u
-WHERE u.cognito_sub = 'dev-admin-001'
-  AND NOT EXISTS (
-      SELECT 1 FROM companies c WHERE c.name = 'Northstar Retail Ltd'
-  );
+    NULL
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM companies
+    WHERE name = 'Northstar Retail Ltd'
+);
+
+-- Company 2: Apex Logistics Ltd
 
 INSERT INTO companies
     (name, industry, location, description, website, status, created_by)
@@ -64,12 +50,14 @@ SELECT
     'Synthetic logistics organisation used for FairWork Pulse development.',
     NULL,
     'ACTIVE',
-    u.user_id
-FROM user_profiles u
-WHERE u.cognito_sub = 'dev-admin-001'
-  AND NOT EXISTS (
-      SELECT 1 FROM companies c WHERE c.name = 'Apex Logistics Ltd'
-  );
+    NULL
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM companies
+    WHERE name = 'Apex Logistics Ltd'
+);
+
+-- Company 3: Greenfield Technologies Ltd
 
 INSERT INTO companies
     (name, industry, location, description, website, status, created_by)
@@ -80,64 +68,27 @@ SELECT
     'Synthetic technology organisation used for FairWork Pulse development.',
     NULL,
     'ACTIVE',
-    u.user_id
-FROM user_profiles u
-WHERE u.cognito_sub = 'dev-admin-001'
-  AND NOT EXISTS (
-      SELECT 1 FROM companies c WHERE c.name = 'Greenfield Technologies Ltd'
-  );
-
+    NULL
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM companies
+    WHERE name = 'Greenfield Technologies Ltd'
+);
 
 -- ============================================================================
--- 3. EMPLOYER -> COMPANY ACCESS
+-- 2. USER AND COMPANY ACCESS SETUP
+-- ============================================================================
+-- User profiles are created through the application after Cognito login.
+--
+-- Initial ADMIN:
+-- An authorised AWS operator assigns a verified Cognito user to ADMIN.
+--
+-- EMPLOYER:
+-- An administrator generates an employer invitation code.
+-- The employer registers and redeems the code.
+-- The backend creates the employer-company association.
+--
+-- No user_profiles or employer_company_access records are seeded.
 -- ============================================================================
 
-INSERT INTO employer_company_access
-    (user_id, company_id, status, granted_by)
-
-SELECT
-    employer.user_id,
-    company.company_id,
-    'ACTIVE',
-    admin_user.user_id
-
-FROM user_profiles employer
-
-JOIN companies company
-    ON company.name = 'Northstar Retail Ltd'
-
-JOIN user_profiles admin_user
-    ON admin_user.cognito_sub = 'dev-admin-001'
-
-WHERE employer.cognito_sub =
-    '541894e8-60c1-706a-72ba-2da5a9d022bc'
-
-ON DUPLICATE KEY UPDATE
-    status = 'ACTIVE',
-    granted_by = VALUES(granted_by),
-    revoked_at = NULL;
-
-
-INSERT INTO employer_company_access
-    (user_id, company_id, status, granted_by)
-
-SELECT
-    employer.user_id,
-    company.company_id,
-    'ACTIVE',
-    admin_user.user_id
-
-FROM user_profiles employer
-
-JOIN companies company
-    ON company.name = 'Greenfield Technologies Ltd'
-
-JOIN user_profiles admin_user
-    ON admin_user.cognito_sub = 'dev-admin-001'
-
-WHERE employer.cognito_sub = 'dev-employer-002'
-
-ON DUPLICATE KEY UPDATE
-    status = 'ACTIVE',
-    granted_by = VALUES(granted_by),
-    revoked_at = NULL;
+COMMIT;
