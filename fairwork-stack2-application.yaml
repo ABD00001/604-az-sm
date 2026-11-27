@@ -14,7 +14,7 @@ Parameters:
   WorkerLambdaS3Key: {Type: String}
   DeploymentVersion: {Type: String, Default: manual}
   ApiStageName: {Type: String, Default: poc}
-  AllowedOrigin: {Type: String, Default: 'https://main.d24ulcn3afdy4t.amplifyapp.com'}
+  AllowedOrigin: {Type: String, Default: 'https://main.d5mcpi3shf0a8.amplifyapp.com/'}
   LogRetentionDays:
     Type: Number
     Default: 14
