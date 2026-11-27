@@ -121,6 +121,10 @@ const {
   handleCreateEmployerResponse
 } = require('./routes/employerResponses');
 
+const {
+  handleRedeemEmployerCode
+} = require('./routes/employerRegistration');
+
 
 // =============================================================================
 // ADMIN DASHBOARD ROUTES
@@ -204,12 +208,12 @@ const ALLOWED_ORIGINS = new Set([
   // Previous S3 frontend
   'http://fairwork-pulse-frontend.s3-website-us-east-1.amazonaws.com',
 
-  // Production AWS Amplify frontend
+  // Previous AWS Amplify frontend
   'https://main.d3gj60hs80y0r0.amplifyapp.com',
 
-  // Origin configured by CloudFormation
+  // Origin configured by CloudFormation (normalise a trailing slash)
   ...(process.env.ALLOWED_ORIGIN
-    ? [process.env.ALLOWED_ORIGIN.trim()]
+    ? [process.env.ALLOWED_ORIGIN.trim().replace(/\/+$/, '')]
     : [])
 
 ]);
@@ -464,6 +468,20 @@ async function routeRequest(event) {
     ) {
 
       return await handleGetWellbeingInsights(event);
+
+    }
+
+
+    // ------------------------------------------------------------------------
+    // POST /employer/registration/redeem
+    // ------------------------------------------------------------------------
+
+    if (
+      method === 'POST' &&
+      path === '/employer/registration/redeem'
+    ) {
+
+      return await handleRedeemEmployerCode(event);
 
     }
 
