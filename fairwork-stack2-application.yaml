@@ -828,6 +828,55 @@ Resources:
   EmployerResource:
     Type: AWS::ApiGateway::Resource
     Properties: {RestApiId: !Ref 'FairWorkApi', ParentId: !GetAtt 'FairWorkApi.RootResourceId', PathPart: employer}
+  EmployerRegistrationResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref 'FairWorkApi'
+      ParentId: !Ref 'EmployerResource'
+      PathPart: registration
+  EmployerRegistrationRedeemResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref 'FairWorkApi'
+      ParentId: !Ref 'EmployerRegistrationResource'
+      PathPart: redeem
+  EmployerRegistrationRedeemPostMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref 'FairWorkApi'
+      ResourceId: !Ref 'EmployerRegistrationRedeemResource'
+      HttpMethod: POST
+      AuthorizationType: COGNITO_USER_POOLS
+      AuthorizerId: !Ref 'FairWorkCognitoAuthorizer'
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub
+        - 'arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations'
+        - {LambdaArn: !GetAtt 'ApiFunction.Arn'}
+  EmployerRegistrationRedeemOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref 'FairWorkApi'
+      ResourceId: !Ref 'EmployerRegistrationRedeemResource'
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: MOCK
+        RequestTemplates: {application/json: '{"statusCode":200}'}
+        IntegrationResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: "'*'"
+            method.response.header.Access-Control-Allow-Methods: "'POST,OPTIONS'"
+            method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
+          ResponseTemplates: {application/json: '{}'}
+      MethodResponses:
+      - StatusCode: 200
+        ResponseParameters:
+          method.response.header.Access-Control-Allow-Origin: true
+          method.response.header.Access-Control-Allow-Methods: true
+          method.response.header.Access-Control-Allow-Headers: true
   EmployerCompanyResource:
     Type: AWS::ApiGateway::Resource
     Properties: {RestApiId: !Ref 'FairWorkApi', ParentId: !Ref 'EmployerResource', PathPart: company}
@@ -997,7 +1046,7 @@ Resources:
           ResponseParameters: {method.response.header.Access-Control-Allow-Headers: "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'", method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'", method.response.header.Access-Control-Allow-Origin: "'*'"}
           ResponseTemplates: {application/json: '{}'}
       MethodResponses: [{StatusCode: 200, ResponseParameters: {method.response.header.Access-Control-Allow-Headers: true, method.response.header.Access-Control-Allow-Methods: true, method.response.header.Access-Control-Allow-Origin: true}}]
-  ApiDeployCorsV2:
+  ApiDeployEmployerRegistrationV4:
     Type: AWS::ApiGateway::Deployment
     DependsOn:
     - HealthGetMethod
@@ -1039,6 +1088,8 @@ Resources:
     - EmployeeWellbeingCheckinsOptionsMethod
     - EmployeeWellbeingInsightsGetMethod
     - EmployeeWellbeingInsightsOptionsMethod
+    - EmployerRegistrationRedeemPostMethod
+    - EmployerRegistrationRedeemOptionsMethod
     - EmployerCompanyGetMethod
     - EmployerCompanyOptionsMethod
     - EmployerReviewsGetMethod
@@ -1054,7 +1105,7 @@ Resources:
     Properties: {RestApiId: !Ref 'FairWorkApi', Description: !Sub 'FairWork Pulse deployment ${DeploymentVersion}'}
   FairWorkApiStage:
     Type: AWS::ApiGateway::Stage
-    Properties: {RestApiId: !Ref 'FairWorkApi', DeploymentId: !Ref 'ApiDeployCorsV2', StageName: !Ref 'ApiStageName'}
+    Properties: {RestApiId: !Ref 'FairWorkApi', DeploymentId: !Ref 'ApiDeployEmployerRegistrationV4', StageName: !Ref 'ApiStageName'}
   AdminDashRoot:
     Type: AWS::ApiGateway::Resource
     Properties: {RestApiId: !Ref 'FairWorkApi', ParentId: !Ref 'AdminResource', PathPart: dashboard}
