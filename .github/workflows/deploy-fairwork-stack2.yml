@@ -193,6 +193,15 @@ jobs:
           echo "artifact_bucket=${ARTIFACT_BUCKET}" \
             >> "${GITHUB_OUTPUT}"
           echo "Artifact bucket found."
+      - name: Assert employer registration route exists in template
+        run: |
+          set -euo pipefail
+          grep -q '^  EmployerRegistrationRedeemResource:' "${TEMPLATE_FILE}"
+          grep -q '^  EmployerRegistrationRedeemPostMethod:' "${TEMPLATE_FILE}"
+          grep -q '^  EmployerRegistrationRedeemOptionsMethod:' "${TEMPLATE_FILE}"
+          grep -q '^  ApiDeployEmployerRegistrationV4:' "${TEMPLATE_FILE}"
+          echo "Employer redemption resources present in checked-out template: ${GITHUB_SHA}"
+
       # ======================================================================
       # 8. VALIDATE CLOUDFORMATION
       # ======================================================================
@@ -712,6 +721,41 @@ jobs:
           done
           echo "CORS checks passed for both frontends."
       # ======================================================================
+      - name: Verify deployed employer registration preflight
+        run: |
+          set -euo pipefail
+          API_ID=$(aws cloudformation describe-stacks \
+            --stack-name "${APPLICATION_STACK_NAME}" \
+            --region "${AWS_REGION}" \
+            --query "Stacks[0].Outputs[?OutputKey=='ApiId'].OutputValue | [0]" \
+            --output text)
+          if [ -z "${API_ID}" ] || [ "${API_ID}" = "None" ]; then
+            echo "ERROR: API ID missing from stack outputs"
+            exit 1
+          fi
+          RESOURCES=$(aws apigateway get-resources \
+            --rest-api-id "${API_ID}" \
+            --region "${AWS_REGION}" \
+            --limit 500 \
+            --output json)
+          echo "${RESOURCES}" | jq -e '.items[] | select(.path == "/employer/registration/redeem") | select(.resourceMethods.POST and .resourceMethods.OPTIONS)' >/dev/null
+          URL="https://${API_ID}.execute-api.${AWS_REGION}.amazonaws.com/${API_STAGE_NAME}/employer/registration/redeem"
+          STATUS=$(curl --silent --show-error \
+            -o /dev/null -D employer-preflight-headers.txt \
+            -w '%{http_code}' \
+            -X OPTIONS "${URL}" \
+            -H "Origin: ${ALLOWED_ORIGIN}" \
+            -H 'Access-Control-Request-Method: POST' \
+            -H 'Access-Control-Request-Headers: authorization,content-type')
+          cat employer-preflight-headers.txt
+          if [ "${STATUS}" != "200" ] && [ "${STATUS}" != "204" ]; then
+            echo "ERROR: Employer preflight returned HTTP ${STATUS}"
+            exit 1
+          fi
+          tr -d '\r' < employer-preflight-headers.txt | grep -Eiq '^access-control-allow-methods: .*POST'
+          tr -d '\r' < employer-preflight-headers.txt | grep -Eiq '^access-control-allow-headers: .*Authorization'
+          echo 'Employer registration preflight passed.'
+
       # ======================================================================
       # 25. DISPLAY STACK OUTPUTS
       # ======================================================================
